@@ -1,22 +1,41 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import Home from '../views/Home.vue'
+import Login from '@/views/login'
+import Home from '@/views/home/'
+import Layout from '@/views/layout/'
+import Article from '@/views/article/'
+import Publish from '@/views/publish/'
 
 Vue.use(VueRouter)
 
+// 路由配置表
 const routes = [
   {
-    path: '/',
-    name: 'Home',
-    component: Home
+    path: '/login',
+    name: 'login',
+    component: Login
   },
   {
-    path: '/about',
-    name: 'About',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/About.vue')
+    path: '/',
+    name: 'layout',
+    component: Layout,
+    children: [
+      {
+        path: '', // path 为空，会作为默认子路由渲染
+        name: 'home',
+        component: Home
+      },
+      {
+        path: '/article', // path 为空，会作为默认子路由渲染
+        name: 'article',
+        component: Article
+      },
+      {
+        path: '/publish', // path 为空，会作为默认子路由渲染
+        name: 'publish',
+        component: Publish
+      }
+    ]
   }
 ]
 
