@@ -3,13 +3,19 @@
  */
 
 import request from '@/utils/request'
-export const addArticle = (data, draft = false) => {
+
+export const uploadImage = data => {
   return request({
     method: 'POST',
-    url: '/mp/v1_0/articles',
-    params: {
-      draft // 是否存为草稿（true 为草稿）
-    },
+    url: '/mp/v1_0/user/images',
     data
+  })
+}
+
+export const getImages = params => {
+  return request({
+    method: 'GET',
+    url: '/mp/v1_0/user/images',
+    params
   })
 }
