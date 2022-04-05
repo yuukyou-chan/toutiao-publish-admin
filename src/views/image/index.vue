@@ -12,9 +12,9 @@
     </div>
     <div class="action-head">
       <el-radio-group
-      v-model="radio1"
+      v-model="collect"
       size="mini"
-      @change="onCollectChanged">
+      @change="loadImages(1)">
         <el-radio-button :label="false" >全部</el-radio-button>
         <el-radio-button :label="true" >收藏</el-radio-button>
       </el-radio-group>
@@ -31,18 +31,38 @@
          :sm="6"
          :lg="4"
          v-for="(img,index) in images"
-         :key="index">
+         :key="index"
+         class="image-item">
          <el-image
-           style="height: 100px"
+           style="height: 100px; width: 200px"
            :src="img.url"
            fit="cover"
            ></el-image>
+           <div class="image-action">
+             <el-button
+              type="warning"
+              :icon="img.is_collected ? 'el-icon-star-on' : 'el-icon-star-off'"
+              circle
+              @click="onCollect(img)"
+              :loading="img.loading"
+              ></el-button>
+               <el-button
+              type="warning"
+              icon="el-icon-delete-solid"
+              circle
+              @click="onDelete(img)"
+              :loading="img.loading"
+              ></el-button>
+           </div>
            </el-col>
         </el-row>
         <el-pagination
           background
           layout="prev, pager, next"
           :total="totalCount"
+          @current-change="onPageChange"
+          :page-size="pageSize"
+          current-page.sync="page"
           >
         </el-pagination>
 </el-card>
@@ -68,7 +88,11 @@
 </template>
 
 <script>
-import { getImages } from '@/api/image'
+import {
+  getImages,
+  collectImage,
+  deleteImage
+} from '@/api/image'
 export default {
   name: 'ImageIndex',
   components: {},
@@ -76,33 +100,59 @@ export default {
   data () {
     const user = JSON.parse(window.localStorage.getItem('user'))
     return {
-      radio1: '全部',
+      collect: false,
       images: [],
       dialogUploadVisible: false,
       uploadHeaders: {
         Authorization: `Bearer ${user.token}`
       },
-      totalCount: ''
+      totalCount: '',
+      pageSize: 20,
+      page: 1
     }
   },
   computed: {},
   watch: {},
   created () {
-    this.loadImages(false)
+    this.loadImages()
   },
   mounted () {},
   methods: {
-    loadImages (collect = false) {
-      getImages({ collect }).then(res => {
-        this.images = res.data.data.results
+    loadImages (page = 1) {
+      this.page = page
+      getImages({
+        collect: this.collect,
+        page,
+        per_page: this.pageSize
+      }).then(res => {
+        const results = res.data.data.results
+        this.images = results
+        results.forEach(img => {
+          img.loading = false
+        })
+        this.totalCount = res.data.data.total_count
       })
-    },
-    onCollectChanged (value) {
-      this.loadImages(value)
     },
     onUploadSuccess () {
       this.dialogUploadVisible = false
-      this.loadImages(false)
+      this.loadImages(this.page)
+    },
+    onPageChange (page) {
+      this.loadImages(page)
+    },
+    onCollect (img) {
+      img.loading = true
+      collectImage(img.id, !img.is_collected).then(res => {
+        img.loading = false
+        img.is_collected = !img.is_collected
+      })
+    },
+    onDelete (img) {
+      img.loading = true
+      deleteImage(img.id).then(res => {
+        img.loading = false
+        this.loadImages()
+      })
     }
   }
 }
@@ -114,4 +164,21 @@ export default {
   display: flex;
   justify-content: space-between;
 }
+.image-action {
+  height: 40px;
+  background-color: rgba(204,204,204,.5);
+  position: absolute;
+  bottom: 6px;
+  left: 5px;
+  right: 12px;
+  font-size: 25px;
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  color: #fff;
+}
+.image-item {
+  position: relative;
+}
+
 </style>

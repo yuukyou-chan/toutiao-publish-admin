@@ -19,3 +19,20 @@ export const getImages = params => {
     params
   })
 }
+
+export const collectImage = (imaeId, collect) => {
+  return request({
+    method: 'PUT',
+    url: `/mp/v1_0/user/images/${imaeId}`,
+    data: {
+      collect
+    }
+  })
+}
+
+export const deleteImage = imaeId => {
+  return request({
+    method: 'DELETE',
+    url: `/mp/v1_0/user/images/${imaeId}`
+  })
+}
