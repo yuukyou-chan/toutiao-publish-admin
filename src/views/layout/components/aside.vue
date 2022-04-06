@@ -34,7 +34,7 @@
       <i class="el-icon-setting"></i>
       <span slot="title">粉丝管理</span>
     </el-menu-item>
-    <el-menu-item index="/settings">
+    <el-menu-item index="/setting">
       <i class="el-icon-setting"></i>
       <span slot="title">个人设置</span>
     </el-menu-item>

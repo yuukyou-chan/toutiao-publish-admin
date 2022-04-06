@@ -43,7 +43,9 @@
             <el-switch
             v-model="scope.row.comment_status"
             active-color="#13ce66"
-            inactive-color="#ff4949">
+            inactive-color="#ff4949"
+            @change="onChange(scope.row)"
+            :disabled="scope.row.statusDisabled">
             </el-switch>
         </template>
       </el-table-column>
@@ -51,11 +53,11 @@
     <el-pagination
       @size-change="handleSizeChange"
       @current-change="handleCurrentChange"
-      :current-page="1"
-      :page-sizes="[100, 200, 300, 400]"
-      :page-size="100"
+      :current-page.sync="page"
+      :page-sizes="[10, 20, 50, 100]"
+      :page-size.sync="pageSize"
       layout="total, sizes, prev, pager, next, jumper"
-      :total="400"
+      :total="totalCount"
       background>
     </el-pagination>
 </el-card>
@@ -64,7 +66,8 @@
 
 <script>
 import {
-  getArticles
+  getArticles,
+  updateCommentStatus
 } from '@/api/article'
 export default {
   name: 'CommenIndex',
@@ -72,27 +75,10 @@ export default {
   props: {},
   data () {
     return {
-      tableData: [{
-        date: '2016-05-02',
-        name: '王小虎',
-        address: '上海市普陀区金沙江路 1518 弄'
-      },
-      {
-        date: '2016-05-04',
-        name: '王小虎',
-        address: '上海市普陀区金沙江路 1517 弄'
-      },
-      {
-        date: '2016-05-01',
-        name: '王小虎',
-        address: '上海市普陀区金沙江路 1519 弄'
-      },
-      {
-        date: '2016-05-03',
-        name: '王小虎',
-        address: '上海市普陀区金沙江路 1516 弄'
-      }],
-      articles: []
+      articles: [], // 文章
+      totalCount: 0,
+      pageSize: 10,
+      page: 1 // 当前页码
     }
   },
   computed: {},
@@ -102,13 +88,31 @@ export default {
   },
   mounted () {},
   methods: {
-    handleSizeChange () {},
-    handleCurrentChange () {},
-    loadArticles () {
+    handleSizeChange (page) {
+      this.loadArticles(page = 1)
+    },
+    handleCurrentChange (page) {
+      this.loadArticles(page)
+    },
+    loadArticles (page = 1) {
+      this.page = page
       getArticles({
-        response_type: 'comment'
+        response_type: 'comment',
+        page,
+        per_page: this.pageSize
       }).then(res => {
-        this.articles = res.data.data.results
+        const { results } = res.data.data
+        results.forEach(article => {
+          article.statusDisabled = false
+        })
+        this.articles = results
+        this.totalCount = res.data.data.total_count
+      })
+    },
+    onChange (article) {
+      article.statusDisabled = true
+      updateCommentStatus(article.id.toString(), article.comment_status).then(res => {
+        article.statusDisabled = false
       })
     }
   }
