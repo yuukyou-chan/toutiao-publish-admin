@@ -11,7 +11,7 @@
         </div>
         <el-row>
           <el-col :span="15">
-              <el-form ref="form" :model="form" label-width="80px">
+              <el-form ref="form" :model="user" label-width="80px">
               <el-form-item label="编号">
                 {{user.id}}
               </el-form-item>
@@ -28,52 +28,73 @@
                 <el-input v-model="user.email"></el-input>
               </el-form-item>
               <el-form-item>
-                <el-button type="primary" @click="onSubmit">立即创建</el-button>
-                <el-button>取消</el-button>
+                <el-button type="primary" @click="onUpdateUser">保存</el-button>
               </el-form-item>
             </el-form>
           </el-col>
           <el-col :offset="2" :span="4">
-            <label for="file">
-              <el-avatar
+             <label for="file">
+            <el-avatar
               shape="square"
-              :fit="fit"
-              :size="100"
+              :size="150"
+              fit="cover"
               :src="user.photo"
-             ></el-avatar>
-             <p>点击修改头像</p>
-             <input
-              id="file"
-              type="file"
-              hidden
-              ref="file"
-              @change="onFileChange">
-            </label>
+            ></el-avatar>
+            <p>点击修改头像</p>
+          </label>
+          <input
+            id="file"
+            type="file"
+            ref="file"
+            hidden
+            @change="onFileChange"
+          >
           </el-col>
         </el-row>
 
 </el-card>
+    <el-dialog
+      title="修改头像"
+      :visible.sync="dialogVisible"
+      append-to-body
+      @opened="onDialogOpened"
+      @closed="onDialogClosed"
+    >
+      <div class="preview-image-wrap">
+        <img
+          class="preview-image"
+          :src="previewImage"
+          ref="preview-image"
+        >
+      </div>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="dialogVisible = false">取 消</el-button>
+        <el-button
+          type="primary"
+          :loading="updatePhotoLoading"
+          @click="onUpdatePhoto"
+        >确 定</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { getUserProfile } from '@/api/user'
+import 'cropperjs/dist/cropper.css'
+import Cropper from 'cropperjs'
+import {
+  getUserProfile,
+  updateUserProfile,
+  updateUserPhoto
+} from '@/api/user'
+import globalBus from '@/utils/global-bus'
+
 export default {
   name: 'SettingIndex',
   component: {},
   props: {},
   data () {
     return {
-      form: {
-        name: '',
-        region: '',
-        date1: '',
-        date2: '',
-        delivery: false,
-        type: [],
-        resource: '',
-        desc: ''
-      },
       user: {
         email: '',
         id: null,
@@ -81,7 +102,12 @@ export default {
         mobile: '',
         name: '',
         photo: ''
-      } // 用户资料
+      }, // 用户资料
+      cropper: null,
+      dialogVisible: false, // 控制上传图片裁切预览的显示状态
+      previewImage: '', // 预览图片
+      updatePhotoLoading: false, // 更新用户头像 loading 状态
+      updateProfileLoading: false // 更新基本信息的 loading 状态
     }
   },
   computed: {},
@@ -91,8 +117,21 @@ export default {
   },
   mounted () {},
   methods: {
-    onSubmit () {
-      console.log('submit!')
+    onUpdateUser () {
+      const { name, intro, email } = this.user
+      updateUserProfile({
+        name,
+        intro,
+        email
+      }).then(res => {
+        this.$message({
+          type: 'success',
+          message: '保存成功'
+        })
+        this.updateProfileLoading = false
+        // 发布通知，用户信息已修改
+        globalBus.$emit('update-user', this.user)
+      })
     },
     loadUser () {
       getUserProfile().then(res => {
@@ -100,13 +139,78 @@ export default {
       })
     },
     onFileChange () {
-      // 解决相同文件不触发 change 事件问题
+      // 处于图片预览
+      const file = this.$refs.file
+      const blobData = window.URL.createObjectURL(file.files[0])
+      this.previewImage = blobData
+      // 展示弹出层，预览用户选择的图片
+      this.dialogVisible = true
+      // 解决选择相同文件不触发 change 事件问题
       this.$refs.file.value = ''
-    }
+    },
+    onDialogOpened () {
+      // 图片裁切器必须基于 img 进行初始化
+      // 注意：img 必须是可见状态才能正常完成初始化
+      //       因为我们这里要在对话框里面初始化裁切器
+      //       所以务必要在对话框完全打开的状态去进行初始化。
+      // 获取图片 DOM 节点
+      const image = this.$refs['preview-image']
+      // 第1次初始化好以后，如果预览裁切的图片发生了变化，裁切器默认不会更新
+      // 如果需要预览图片发生变化更新裁切器：
+      //    方式一：裁切器.replace 方法
+      //    方式二：销毁裁切器，重新初始化
+      // 初始化裁切器
+      if (this.cropper) {
+        this.cropper.replace(this.previewImage)
+        return
+      }
+      this.cropper = new Cropper(image, {
+        viewMode: 1,
+        dragMode: 'none',
+        aspectRatio: 1,
+        cropBoxResizable: false
+
+      })
+    },
+    onUpdatePhoto () {
+      // 让确定按钮开始 loading
+      this.updatePhotoLoading = true
+      // 获取裁切的图片对象
+      this.cropper.getCroppedCanvas().toBlob(file => {
+        const fd = new FormData()
+        fd.append('photo', file)
+        // 请求更新用户头像请求提交 fd
+        updateUserPhoto(fd).then(res => {
+          console.log(res)
+          // 关闭对话框
+          this.dialogVisible = false
+          // 更新视图展示
+          // 直接把裁切结果的文件对象转为 blob 数据本地预览
+          this.user.photo = window.URL.createObjectURL(file)
+          // 关闭确定按钮的 loading
+          this.updatePhotoLoading = false
+          this.$message({
+            type: 'success',
+            message: '更新头像成功'
+          })
+
+          globalBus.$emit('update-user', this.user)
+        })
+      })
+    },
+    onDialogClosed () {}
   }
 }
 </script>
 
-<style>
-
+<style scoped lang="less">
+.preview-image-wrap {
+  /* Ensure the size of the image fit the container perfectly */
+  .preview-image {
+    display: block;
+    /* This rule is very important, please don't ignore this */
+    max-width: 100%;
+    height: 200px;
+  }
+}
 </style>
