@@ -8,6 +8,8 @@ import Publish from '@/views/publish/'
 import Image from '@/views/image/'
 import Comment from '@/views/comment/'
 import Setting from '@/views/setting/'
+import Fans from '@/views/fans/'
+
 Vue.use(VueRouter)
 
 // 路由配置表
@@ -51,6 +53,11 @@ const routes = [
         path: '/setting', // path 为空，会作为默认子路由渲染
         name: 'setting',
         component: Setting
+      },
+      {
+        path: '/fans', // path 为空，会作为默认子路由渲染
+        name: 'fans',
+        component: Fans
       }
     ]
   }
